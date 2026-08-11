@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this baseline harness in your research, please cite it as below."
+title: "DiG-bench baseline harness"
+type: software
+authors:
+  - name: "DiG-bench authors"
+url: "https://digbench.ai/"
+version: "1.0"
+date-released: "2026-08-11"

@@ -1,0 +1,16 @@
+# DiG-bench baseline harness dependencies.
+#
+# The core harness + the SGLang client use only the Python standard library.
+# Each closed-provider client lazily imports ONLY its own SDK, so you can install
+# just the provider(s) you intend to run. Versions below are the floors validated
+# against (newer is fine).
+
+google-genai>=2.8        # --provider gemini
+anthropic[bedrock]>=0.111 # --provider anthropic  (AWS Bedrock, bearer-token auth)
+openai>=2.24             # --provider openai     (Responses API + reasoning)
+
+# dev/test
+pytest>=8                # test suite (fakes only; no network or API keys)
+
+# To reproduce the validated environment exactly (pinned versions):
+#     pip install -r requirements.txt -c constraints.txt

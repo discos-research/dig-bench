@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>core.cli</title><style>
+:root{--fg:#1b1f24;--muted:#5a6675;--bg:#fff;--code:#f4f6f8;--accent:#2456b8;--border:#e3e8ee}
+*{box-sizing:border-box}body{font:15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:var(--fg);
+background:var(--bg);margin:0}.wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:26px;margin:.2em 0}h2{font-size:21px;margin-top:1.6em;border-bottom:1px solid var(--border);padding-bottom:4px}
+h3{font-size:17px;margin-top:1.5em}h4{font-size:15px;margin:1.1em 0 .2em}a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px/1.5 ui-monospace,Menlo,monospace}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap}
+.sig{background:var(--code);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 6px 6px 0;margin:.4em 0;
+font:13px/1.5 ui-monospace,Menlo,monospace;overflow-x:auto}.muted{color:var(--muted)}.static{color:var(--muted);font-size:12px}
+.cls{border:1px solid var(--border);border-radius:10px;padding:4px 18px 14px;margin:1.2em 0;background:#fcfdfe}
+nav{margin:1em 0 2em}nav a{display:inline-block;margin:0 10px 6px 0}.top{font-size:13px}
+</style></head><body><div class='wrap'><p class="top"><a href="index.html">&larr; all modules</a></p><h1><code>core.cli</code></h1><pre>CLI + wiring: parse args, resolve credentials, build the provider policy + bench,
+resolve the context-truncation budget, run play().
+
+Beyond standard arg parsing: the context-truncation flags
+(--context-proportion / --context-budget) and budget resolution. --provider selects the
+client (gemini | sglang | anthropic | openai); it has no default — omit it and you&#x27;re
+prompted to pick one.
+
+Credentials come from environment variables (or pass --api-key). Export them directly, or
+have a secrets manager of your choice inject them into the environment.
+
+Run (from inside the repo root):
+    # Gemini
+    GEMINI_API_KEY=...  python -m core.cli P-1 --provider gemini --verbose
+    # SGLang open model (model auto-IDed from /v1/models, or picked if several are served)
+    python -m core.cli P-1 --provider sglang --base-url http://host:30000/v1 --verbose
+    # Anthropic on Bedrock (bearer token)
+    AWS_BEARER_TOKEN_BEDROCK=...  python -m core.cli P-1         --provider anthropic --model global.anthropic.claude-opus-5 --verbose
+    # OpenAI (Responses API)
+    OPENAI_API_KEY=...  python -m core.cli P-1 --provider openai --model gpt-5.5 --verbose</pre><h2>Functions</h2><h4><code>game_token</code></h4><div class='sig'>game_token() -&gt; &#x27;str&#x27;</div><pre>The bench API token, from DIGBENCH_API_TOKEN.</pre><h4><code>gemini_key</code></h4><div class='sig'>gemini_key() -&gt; &#x27;str&#x27;</div><p class="muted">(no docstring)</p><h4><code>bedrock_token</code></h4><div class='sig'>bedrock_token() -&gt; &#x27;str&#x27;</div><pre>The AWS Bedrock bearer token (an API key, not SigV4 creds).</pre><h4><code>openai_key</code></h4><div class='sig'>openai_key() -&gt; &#x27;str&#x27;</div><p class="muted">(no docstring)</p><h4><code>anthropic_key</code></h4><div class='sig'>anthropic_key() -&gt; &#x27;str&#x27;</div><p class="muted">(no docstring)</p><h4><code>resolve_budget</code></h4><div class='sig'>resolve_budget(args, model_max_context: &#x27;int | None&#x27;, *, warn=None) -&gt; &#x27;int | None&#x27;</div><pre>The rolling-window budget in tokens, or None to DISABLE truncation.
+
+Absolute --context-budget wins (ablation knob). Otherwise window minus a reserve big enough
+for ~1.5 outputs (`max_tokens` counts toward the hard window, and reactive truncation lags one
+turn, so the previous turn&#x27;s output is carried before eviction catches up), falling back to the
+flat (1 - proportion) buffer when that is larger. If the window is unknown and no absolute
+budget is set, truncation is disabled (never crash) — warn and tell the user the knob.</pre><h4><code>default_run_label</code></h4><div class='sig'>default_run_label(model: &#x27;str&#x27;, thinking_level: &#x27;str | None&#x27;) -&gt; &#x27;str&#x27;</div><p class="muted">(no docstring)</p><h4><code>parse_args</code></h4><div class='sig'>parse_args(argv=None)</div><p class="muted">(no docstring)</p><h4><code>ensure_cost_cap_enforceable</code></h4><div class='sig'>ensure_cost_cap_enforceable(args, policy) -&gt; &#x27;None&#x27;</div><pre>cost_usd stays 0.0 on unpriced models, so --max-cost-usd would silently never
+trigger — an unbounded run the operator believes is capped. Refuse before starting.</pre><h4><code>build_policy</code></h4><div class='sig'>build_policy(args, run_dir: &#x27;Path&#x27;)</div><pre>Construct the provider&#x27;s policy. For SGLang this also queries /v1/models
+(model auto-ID + context window), so call it before reading policy.model.</pre><h4><code>main</code></h4><div class='sig'>main() -&gt; &#x27;None&#x27;</div><p class="muted">(no docstring)</p></div></body></html>

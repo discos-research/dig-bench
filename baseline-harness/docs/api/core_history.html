@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>core.history</title><style>
+:root{--fg:#1b1f24;--muted:#5a6675;--bg:#fff;--code:#f4f6f8;--accent:#2456b8;--border:#e3e8ee}
+*{box-sizing:border-box}body{font:15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:var(--fg);
+background:var(--bg);margin:0}.wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:26px;margin:.2em 0}h2{font-size:21px;margin-top:1.6em;border-bottom:1px solid var(--border);padding-bottom:4px}
+h3{font-size:17px;margin-top:1.5em}h4{font-size:15px;margin:1.1em 0 .2em}a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px/1.5 ui-monospace,Menlo,monospace}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap}
+.sig{background:var(--code);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 6px 6px 0;margin:.4em 0;
+font:13px/1.5 ui-monospace,Menlo,monospace;overflow-x:auto}.muted{color:var(--muted)}.static{color:var(--muted);font-size:12px}
+.cls{border:1px solid var(--border);border-radius:10px;padding:4px 18px 14px;margin:1.2em 0;background:#fcfdfe}
+nav{margin:1em 0 2em}nav a{display:inline-block;margin:0 10px 6px 0}.top{font-size:13px}
+</style></head><body><div class='wrap'><p class="top"><a href="index.html">&larr; all modules</a></p><h1><code>core.history</code></h1><pre>The shared turn-aware rolling-window context truncation.
+
+This is the ONLY place the rolling window lives. It operates purely through the
+Policy truncation surface (turns / evict_oldest_turn; the active unit is the one
+Turn with is_active=True, never evicted) and never reconstructs a provider
+payload, so it is identical for every provider. ``evict_for_overflow`` is the
+reactive companion: deficit-sized eviction after a server overflow 4xx (used by
+the harness&#x27;s move retry and the SGLang debrief retry).
+
+Note: this is *truncation* — drop the earliest whole step-pairs — NOT
+consolidation/summarization. By design we never summarize evicted
+turns: this is a minimal benchmark and must not help the model beat the games.
+
+Invariants:
+- evict only WHOLE, oldest, completed units (for the bench loop: step-pairs);
+- NEVER touch the active unit; the client also pins the head task;
+- keep &gt;= MIN_KEEP_TURNS units;
+- evict the FEWEST units needed to get just under budget (minimal eviction).
+
+Note: the trigger, `policy.last_prompt_tokens`, is each provider&#x27;s own server-reported,
+cache-inclusive prompt size, and tokenizers differ — so &quot;the same proportion of the window&quot;
+is consistent in intent but only approximate in absolute tokens ACROSS providers.
+
+Fairness note (interpreting cross-model results): the output reserve (~1.5 × max_tokens, see
+cli.resolve_budget) is an ABSOLUTE token count, not a proportion — a model retains
+`window − reserve` of history, which is a LARGER fraction of a big window than a small one
+(e.g. ~95% of a 1M window vs ~81% of 256K at the default 32K cap). This is intentional (output
+needs an absolute reserve), but small-window models keep proportionally less context per turn;
+lower `--max-tokens` to shrink the reserve, or set `--context-proportion &lt; 1` for a proportional
+buffer, if tighter per-window parity is wanted.</pre><h2>Functions</h2><h4><code>truncate_if_needed</code></h4><div class='sig'>truncate_if_needed(policy: &#x27;Policy&#x27;, budget: &#x27;int | None&#x27;, *, log=None) -&gt; &#x27;int&#x27;</div><pre>Reactively shrink the next request if the LAST call&#x27;s server-reported
+prompt size exceeded `budget`. Returns the number of units evicted.
+
+The trigger is reactive: we only learn `prompt_tokens` after a call, so we
+evict before the next one. Eviction is minimal — we project the prompt size
+down by each evicted unit&#x27;s `est_tokens` and stop as soon as the projection
+is under budget (never reflexively down to the floor). The next call&#x27;s real
+`last_prompt_tokens` corrects any estimate drift.</pre><h4><code>evict_for_overflow</code></h4><div class='sig'>evict_for_overflow(policy: &#x27;Policy&#x27;, err, *, round_idx: &#x27;int&#x27; = 0) -&gt; &#x27;int&#x27;</div><pre>Reactive recovery for a context-overflow 4xx: evict enough oldest units to cover the
+deficit the server itself reported. Returns the number of units evicted; 0 means eviction
+cannot shrink further (only the pinned head + active unit remain) — the caller gives up.
+
+The overflow wording states the exact numbers (&quot;requested a total of T tokens ...
+maximum context length of L&quot;); evict oldest units until their summed ``est_tokens``
+covers ``(T - L) * _OVERFLOW_MARGIN + _OVERFLOW_SLACK``. Sizing to the deficit matters:
+the oldest units are the smallest (early turns carry little/no reasoning), so a fixed
+per-retry count starves against a multi-thousand-token overshoot. When the wording has
+no counts, fall back to a doubling batch (``2**round_idx``) so repeated rounds still
+converge. No MIN_KEEP_TURNS floor here — this mirrors the recovery path&#x27;s pre-existing
+semantics (the client itself refuses to evict the pinned head / lone active unit).</pre></div></body></html>

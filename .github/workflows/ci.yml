@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths: ["baseline-harness/**", ".github/workflows/ci.yml"]
+  pull_request:
+    paths: ["baseline-harness/**", ".github/workflows/ci.yml"]
+
+defaults:
+  run:
+    working-directory: baseline-harness
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -r requirements.txt -c constraints.txt
+      - run: python -m pytest -q
+
+  tests-no-sdks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install pytest -c constraints.txt
+      - run: python -m pytest -q
+
+  docs-fresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python tools/gen_api_docs.py
+      - run: git diff --exit-code docs/

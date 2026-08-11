@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Run artifacts (saved traces: .log + .jsonl, and 4xx request dumps)
+runs/
+
+# Secrets / local config
+.env
+.env.*
+*.local
+.doppler/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# stray 4xx request dumps (tests use a temp dir; this catches any that escape)
+*_4xx_*.json

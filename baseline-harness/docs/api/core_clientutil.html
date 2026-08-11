@@ -1,0 +1,82 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>core.clientutil</title><style>
+:root{--fg:#1b1f24;--muted:#5a6675;--bg:#fff;--code:#f4f6f8;--accent:#2456b8;--border:#e3e8ee}
+*{box-sizing:border-box}body{font:15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:var(--fg);
+background:var(--bg);margin:0}.wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:26px;margin:.2em 0}h2{font-size:21px;margin-top:1.6em;border-bottom:1px solid var(--border);padding-bottom:4px}
+h3{font-size:17px;margin-top:1.5em}h4{font-size:15px;margin:1.1em 0 .2em}a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px/1.5 ui-monospace,Menlo,monospace}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap}
+.sig{background:var(--code);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 6px 6px 0;margin:.4em 0;
+font:13px/1.5 ui-monospace,Menlo,monospace;overflow-x:auto}.muted{color:var(--muted)}.static{color:var(--muted);font-size:12px}
+.cls{border:1px solid var(--border);border-radius:10px;padding:4px 18px 14px;margin:1.2em 0;background:#fcfdfe}
+nav{margin:1em 0 2em}nav a{display:inline-block;margin:0 10px 6px 0}.top{font-size:13px}
+</style></head><body><div class='wrap'><p class="top"><a href="index.html">&larr; all modules</a></p><h1><code>core.clientutil</code></h1><pre>Shared, provider-agnostic helpers for the LLM client classes.
+
+Reusable infrastructure only — no game logic and no single-provider knowledge. It holds
+the small helpers and the retry/error machinery shared by the four clients:
+
+- ``zero_usage`` / ``est_tokens`` — trivial shared utilities. (Model→table matching
+  lives in ``accounting.match_model`` — one matcher for pricing + context-window lookups.)
+- ``extract_status`` / ``is_retryable`` — one HTTP-error classification policy for every
+  provider (the SDKs expose the status differently; see ``extract_status``).
+- ``dump_request`` — the 4xx request dump for offline debugging.
+- ``run_request`` — the retry loop with exponential backoff used by the closed-model clients
+  (Gemini/Anthropic/OpenAI). SGLang keeps its own loop (it accumulates a streamed SSE response and
+  has provider-specific move-channel handling) but reuses the classifier + dump here.
+- ``iter_sse_data`` / ``accumulate_chat_stream`` (+ ``StreamError``) — fold an OpenAI-compatible
+  chat-completions SSE stream back into the same response dict a non-streamed call returns. Only
+  SGLang streams today; kept here so it is socket-free unit-testable and reusable by any
+  OpenAI-compatible client. Iterating the live response makes the socket read timeout act as a
+  per-chunk idle timeout (no watchdog thread).
+
+Error taxonomy:
+- retryable: HTTP 500/502/503/504, Anthropic 529 (overloaded), 429 rate-limit, and
+  network/timeout errors (no HTTP status);
+- fatal (fail-fast): 400/401/403/404/413/422, AND the one permanent 429 — OpenAI
+  ``insufficient_quota`` (a billing state; backoff cannot create quota). Anthropic billing is a
+  400 (already fatal); Gemini has no clean permanent-429 marker, so its 429 stays retryable.
+- fatal (fail-fast): programming errors (TypeError/AttributeError/KeyError/IndexError/NameError
+  — SDK drift or our bugs), whatever their status; retrying them only hides the traceback
+  behind minutes of backoff. ValueError stays transient (json/decode paths raise it for
+  genuinely transient read garbage).</pre><h2>Functions</h2><h4><code>clamp_thinking_budget</code></h4><div class='sig'>clamp_thinking_budget(level: &#x27;str&#x27;, max_tokens: &#x27;int&#x27;, *, floor: &#x27;int&#x27;, cap: &#x27;int | None&#x27; = None) -&gt; &#x27;int&#x27;</div><pre>The manual thinking budget for ``level``, clamped to a family&#x27;s API bounds. On every
+budget-based family the thinking spends from the SAME ``max_tokens`` output allowance, so
+at most ``max_tokens - 1024`` is granted (1024 tokens of visible output always remain);
+``floor``/``cap`` are the family&#x27;s hard bounds (e.g. Anthropic floor 1024; Gemini 2.5
+flash cap 24576, pro floor 128 / cap 32768).
+
+The floor GATES, it never bumps up: when ``max_tokens`` leaves less room than the floor
+(or would resolve to a 0 budget — thinking silently OFF while the run is labeled with a
+level), the combination is INFEASIBLE and raises ValueError. Bumping up instead would
+either violate the API (Anthropic requires budget &lt; max_tokens) or mislabel the run.</pre><h4><code>backoff_sleep</code></h4><div class='sig'>backoff_sleep(attempt: &#x27;int&#x27;, cap: &#x27;int&#x27; = 60) -&gt; &#x27;None&#x27;</div><pre>Sleep an exponential backoff (``2**attempt``, capped at ``cap``) plus jitter. The jitter
+desynchronizes concurrent clients so their retries don&#x27;t form a thundering herd against one
+server. Calls ``time.sleep`` at call time so tests can neutralize the wait.</pre><h4><code>urlopen_no_redirect</code></h4><div class='sig'>urlopen_no_redirect(req, timeout)</div><pre>``urllib.request.urlopen`` that refuses to follow redirects (3xx raises ``HTTPError``).
+Use for every request that carries credentials.</pre><h4><code>iter_sse_data</code></h4><div class='sig'>iter_sse_data(line_iterable)</div><pre>Yield the ``data:`` payload string of each SSE event from a line iterable (a urllib
+response iterates as ``bytes`` lines; tests can pass a list/``BytesIO``). Skips blanks and
+``:`` keep-alive comments; stops at the ``[DONE]`` sentinel. The blocking read happens here,
+so the socket&#x27;s read timeout fires naturally on a stalled stream.</pre><h4><code>accumulate_chat_stream</code></h4><div class='sig'>accumulate_chat_stream(line_iterable, *, require_usage: &#x27;bool&#x27; = False) -&gt; &#x27;dict&#x27;</div><pre>Fold a chat-completions SSE stream into the non-streamed response shape:
+``{&quot;choices&quot;:[{&quot;message&quot;:{...}, &quot;finish_reason&quot;:...}], &quot;usage&quot;:{...}}``. Concatenates
+content / reasoning / tool-call-argument deltas, preserves WHICH reasoning key the server
+used (``reasoning_content`` vs ``reasoning`` — emit only that one), and takes ``usage`` from
+the final (choices-empty) chunk. Raises ``StreamError`` on an error chunk. With
+``require_usage`` (the caller requested ``stream_options.include_usage``), a stream that
+ends without the usage trailer is treated as truncated too.</pre><h4><code>zero_usage</code></h4><div class='sig'>zero_usage() -&gt; &#x27;dict&#x27;</div><p class="muted">(no docstring)</p><h4><code>est_tokens</code></h4><div class='sig'>est_tokens(chunk) -&gt; &#x27;int&#x27;</div><pre>Cheap size proxy (chars // 4) over a unit&#x27;s serialized form — for MINIMAL eviction, not
+billing. Provider payload objects stringify to their repr, which is fine as a proxy.</pre><h4><code>extract_status</code></h4><div class='sig'>extract_status(exc) -&gt; &#x27;int | None&#x27;</div><pre>The HTTP status from a provider exception, or None (network/timeout/unknown).
+OpenAI/Anthropic SDK errors expose `.status_code`; google-genai `APIError.code` and the
+SGLang `ChatError.code` are the int status under `.code`.</pre><h4><code>is_retryable</code></h4><div class='sig'>is_retryable(exc) -&gt; &#x27;bool&#x27;</div><pre>Transient (retry) vs deterministic (fail-fast). See the module docstring for the policy.</pre><h4><code>is_context_overflow</code></h4><div class='sig'>is_context_overflow(err) -&gt; &#x27;bool&#x27;</div><pre>True if ``err`` (a failed-Move error dict, or an exception) is a context-window overflow —
+recoverable by evicting history and retrying, vs a generic fatal 4xx.</pre><h4><code>parse_overflow_tokens</code></h4><div class='sig'>parse_overflow_tokens(err) -&gt; &#x27;tuple[int, int] | None&#x27;</div><pre>``(requested_total, limit)`` parsed from a context-overflow error message, or None when
+the wording carries no usable counts (then the caller falls back to blind eviction).
+Only a coherent pair (total &gt; limit &gt; 0) is returned — never a negative deficit.</pre><h4><code>dump_request</code></h4><div class='sig'>dump_request(debug_dir: &#x27;str&#x27;, provider: &#x27;str&#x27;, exc, request, call_count: &#x27;int&#x27;) -&gt; &#x27;str | None&#x27;</div><pre>Write the failing request to ``&lt;provider&gt;_4xx_&lt;ts&gt;_&lt;n&gt;.json`` for offline debugging.
+The request is dumped verbatim when JSON-serializable (e.g. SGLang payloads); otherwise we
+record just its keys (SDK payloads carry non-serializable block/item objects).</pre><h4><code>run_request</code></h4><div class='sig'>run_request(call: &#x27;Callable&#x27;, *, provider: &#x27;str&#x27;, max_retries: &#x27;int&#x27;, request, debug_dir: &#x27;str&#x27;, call_count: &#x27;int&#x27; = 0, on_event: &#x27;Callable | None&#x27; = None)</div><pre>Call ``call()`` with retries. Returns ``(result, None)`` on success, else
+``(None, error_dict)``. Deterministic errors (``is_retryable`` False) fail fast and dump the
+request; transient errors retry with exponential backoff + jitter (see ``backoff_sleep``,
+capped at ``BACKOFF_CAP`` s). Backoff uses ``time.sleep`` at call time (so tests can patch it).</pre><div class='cls'><h2>class <code>_RefuseRedirect</code></h2><p class="muted">(no docstring)</p><h4><code>redirect_request</code></h4><div class='sig'>redirect_request(self, req, fp, code, msg, headers, newurl)</div><pre>Return a Request or None in response to a redirect.
+
+This is called by the http_error_30x methods when a
+redirection response is received.  If a redirection should
+take place, return a new Request to allow http_error_30x to
+perform the redirect.  Otherwise, raise HTTPError if no-one
+else should try to handle this url.  Return None if you can&#x27;t
+but another Handler might.</pre></div><div class='cls'><h2>class <code>StreamError</code></h2><pre>A streamed response carried an error chunk. ``code`` is the HTTP-ish status if the server
+gave one (else None -&gt; treated as transient by ``is_retryable``). Provider code maps this to
+its own error type (keeps this module provider-agnostic).</pre><h4><code>__init__</code></h4><div class='sig'>__init__(self, code, body)</div><pre>Initialize self.  See help(type(self)) for accurate signature.</pre></div></div></body></html>

@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>clients.gemini_client</title><style>
+:root{--fg:#1b1f24;--muted:#5a6675;--bg:#fff;--code:#f4f6f8;--accent:#2456b8;--border:#e3e8ee}
+*{box-sizing:border-box}body{font:15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:var(--fg);
+background:var(--bg);margin:0}.wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:26px;margin:.2em 0}h2{font-size:21px;margin-top:1.6em;border-bottom:1px solid var(--border);padding-bottom:4px}
+h3{font-size:17px;margin-top:1.5em}h4{font-size:15px;margin:1.1em 0 .2em}a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px/1.5 ui-monospace,Menlo,monospace}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap}
+.sig{background:var(--code);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 6px 6px 0;margin:.4em 0;
+font:13px/1.5 ui-monospace,Menlo,monospace;overflow-x:auto}.muted{color:var(--muted)}.static{color:var(--muted);font-size:12px}
+.cls{border:1px solid var(--border);border-radius:10px;padding:4px 18px 14px;margin:1.2em 0;background:#fcfdfe}
+nav{margin:1em 0 2em}nav a{display:inline-block;margin:0 10px 6px 0}.top{font-size:13px}
+</style></head><body><div class='wrap'><p class="top"><a href="index.html">&larr; all modules</a></p><h1><code>clients.gemini_client</code></h1><pre>Gemini client — GeminiPolicy, implements core.types.Policy.
+
+Append-only `contents`,
+the model&#x27;s Content appended VERBATIM each turn (so the thought signature rides
+forward and Gemini keeps its reasoning), the forced `make_move` tool (mode=ANY),
+exact token/USD accounting, and the tool-free debrief.
+
+The Policy truncation surface:
+- `last_prompt_tokens` — the server-reported prompt size, the truncation trigger;
+- `turns()` / `evict_oldest_turn()` — segment the flat
+  `contents` into evictable STEP-PAIR units. A unit = one model output
+  (functionCall + signature) plus the user functionResponse that follows it. The
+  head TASK DESCRIPTION (everything before the first model output) is PINNED and
+  never a unit; the latest unit is the ACTIVE unit and is never evicted.
+
+Retry/error handling is the shared `core.clientutil` policy: transient errors
+(5xx/429-rate/network) retry with backoff; deterministic 4xx fail fast and dump the
+request. (A signature-validation 400 thus fails fast.)</pre><div class='cls'><h2>class <code>GeminiPolicy</code></h2><pre>Owns the Gemini chat: the append-only `contents`, verbatim signature
+refeed, the forced make_move tool, exact accounting, and the step-pair
+truncation surface.</pre><h4><code>__init__</code></h4><div class='sig'>__init__(self, *, api_key: &#x27;str&#x27;, model: &#x27;str&#x27;, thinking_level: &#x27;str | None&#x27;, timeout: &#x27;int&#x27;, max_retries: &#x27;int&#x27;, max_tokens: &#x27;int&#x27; = 32000, pricing: &#x27;dict | None&#x27; = None, include_thoughts: &#x27;bool&#x27; = True, seed: &#x27;int | None&#x27; = None, client=None)</div><pre>Initialize self.  See help(type(self)) for accurate signature.</pre><h4><code>_thinking_config</code></h4><div class='sig'>_thinking_config(self, *, include_thoughts: &#x27;bool&#x27;) -&gt; &#x27;types.ThinkingConfig&#x27;</div><p class="muted">(no docstring)</p><h4><code>_build_turn_config</code></h4><div class='sig'>_build_turn_config(self) -&gt; &#x27;types.GenerateContentConfig&#x27;</div><p class="muted">(no docstring)</p><h4><code>_build_debrief_config</code></h4><div class='sig'>_build_debrief_config(self) -&gt; &#x27;types.GenerateContentConfig&#x27;</div><p class="muted">(no docstring)</p><h4><code>start</code></h4><div class='sig'>start(self, description: &#x27;str&#x27;, state_slice: &#x27;dict&#x27;) -&gt; &#x27;None&#x27;</div><p class="muted">(no docstring)</p><h4><code>observe</code></h4><div class='sig'>observe(self, result: &#x27;dict&#x27;) -&gt; &#x27;None&#x27;</div><p class="muted">(no docstring)</p><h4><code>add_nudge</code></h4><div class='sig'>add_nudge(self, text: &#x27;str&#x27;) -&gt; &#x27;None&#x27;</div><p class="muted">(no docstring)</p><h4><code>_generate</code></h4><div class='sig'>_generate(self, config: &#x27;types.GenerateContentConfig&#x27;, *, max_retries: &#x27;int&#x27;)</div><p class="muted">(no docstring)</p><h4><code>_account</code></h4><div class='sig'>_account(self, metadata: &#x27;Any&#x27;) -&gt; &#x27;tuple[dict, float | None]&#x27;</div><p class="muted">(no docstring)</p><h4><code>_extract</code> <span class='static'>staticmethod</span></h4><div class='sig'>_extract(resp, content) -&gt; &#x27;tuple[str | None, str, bool, str | None]&#x27;</div><p class="muted">(no docstring)</p><h4><code>generate_move</code></h4><div class='sig'>generate_move(self) -&gt; &#x27;Move&#x27;</div><p class="muted">(no docstring)</p><h4><code>debrief</code></h4><div class='sig'>debrief(self) -&gt; &#x27;str | None&#x27;</div><p class="muted">(no docstring)</p><h4><code>_model_indices</code></h4><div class='sig'>_model_indices(self) -&gt; &#x27;list[int]&#x27;</div><p class="muted">(no docstring)</p><h4><code>turns</code></h4><div class='sig'>turns(self)</div><pre>Segment `contents` into evictable step-pair units, oldest -&gt; newest.
+Everything before the first model output is the PINNED head (not a unit).
+Each unit runs from a model output up to (not incl.) the next model output,
+so it captures the functionResponse (and any nudge) that follows. The last
+unit is the ACTIVE unit.</pre><h4><code>evict_oldest_turn</code></h4><div class='sig'>evict_oldest_turn(self) -&gt; &#x27;None&#x27;</div><pre>Drop the oldest completed step-pair: the contents from the first model
+output up to (not incl.) the second. The pinned head (before the first
+model output) and the active (latest) unit are never touched. No-op when
+only the head + the active unit remain.</pre></div></div></body></html>

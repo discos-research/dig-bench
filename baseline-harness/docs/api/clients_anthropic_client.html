@@ -1,0 +1,68 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>clients.anthropic_client</title><style>
+:root{--fg:#1b1f24;--muted:#5a6675;--bg:#fff;--code:#f4f6f8;--accent:#2456b8;--border:#e3e8ee}
+*{box-sizing:border-box}body{font:15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:var(--fg);
+background:var(--bg);margin:0}.wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:26px;margin:.2em 0}h2{font-size:21px;margin-top:1.6em;border-bottom:1px solid var(--border);padding-bottom:4px}
+h3{font-size:17px;margin-top:1.5em}h4{font-size:15px;margin:1.1em 0 .2em}a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px/1.5 ui-monospace,Menlo,monospace}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap}
+.sig{background:var(--code);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 6px 6px 0;margin:.4em 0;
+font:13px/1.5 ui-monospace,Menlo,monospace;overflow-x:auto}.muted{color:var(--muted)}.static{color:var(--muted);font-size:12px}
+.cls{border:1px solid var(--border);border-radius:10px;padding:4px 18px 14px;margin:1.2em 0;background:#fcfdfe}
+nav{margin:1em 0 2em}nav a{display:inline-block;margin:0 10px 6px 0}.top{font-size:13px}
+</style></head><body><div class='wrap'><p class="top"><a href="index.html">&larr; all modules</a></p><h1><code>clients.anthropic_client</code></h1><pre>Anthropic client — AnthropicPolicy, implements core.types.Policy.
+
+Talks to Claude on AWS Bedrock via the official ``anthropic`` SDK&#x27;s
+``AnthropicBedrock`` client, authenticated with a Bedrock bearer token
+(``AWS_BEARER_TOKEN_BEDROCK`` / ``--api-key``). Closed-model sibling of the Gemini
+client: append-only ``messages``, the model&#x27;s response content appended VERBATIM
+each turn (so the ``thinking`` block&#x27;s ``signature`` rides forward and Claude keeps
+its reasoning), exact token/USD accounting, a tool-free debrief, and the step-pair
+truncation surface.
+
+One Anthropic constraint shapes the thinking/move-channel mode: **forced
+tool_choice is INCOMPATIBLE with extended/adaptive thinking** (the API 400s), and
+on Sonnet 4.6/Opus 4.6/Haiku 4.5 the API runs WITHOUT thinking unless ``thinking``
+is sent. So the two are mutually exclusive and both map onto one knob — the
+thinking level:
+
+  - thinking ON  (level low/medium/high/xhigh/max) -&gt; ``thinking:{type:&quot;adaptive&quot;}``
+    + ``output_config.effort`` + ``tool_choice:{type:&quot;auto&quot;}`` (+ nudge fallback);
+    reasoning CARRIED (signature) — the default.
+  - thinking ON, pre-effort model (``ANTHROPIC_MANUAL_THINKING``, e.g. Haiku 4.5) -&gt;
+    ``thinking:{type:&quot;enabled&quot;, budget_tokens:N}`` (manual extended thinking; these models
+    400 on ``output_config.effort``) with N from the
+    SHARED level-&gt;budget table ``clientutil.THINKING_LEVEL_BUDGETS`` (same nominal budget per
+    level across providers), clamped to ``1024 &lt;= N &lt;= max_tokens - 1024``. Same auto-tool
+    + nudge channel (forced tool_choice is illegal with manual thinking too).
+  - thinking OFF (level &quot;none&quot;) -&gt; ``thinking:{type:&quot;disabled&quot;}`` +
+    ``tool_choice:{type:&quot;tool&quot;}`` (forced make_move); reasoning NOT carried — a clean
+    ablation / forced-tool mode.
+
+The OFF branch sends ``disabled`` explicitly: on **Opus 5** and Sonnet 5 an omitted
+``thinking`` means ADAPTIVE, not off. Forced tool_choice suppresses thinking on move
+turns, but the tool-free debrief has no forced tool to lean on, so mere omission
+would let the debrief silently think. Exception: on Fable 5 ``disabled``
+itself 400s (``ANTHROPIC_THINKING_ALWAYS_ON``), so there the OFF branch omits
+``thinking``.
+
+Reasoning carry is SELF-CHECKING like Gemini: re-feeding a modified thinking block
+400s (&quot;blocks in the latest assistant message cannot be modified&quot;). Prior-turn
+thinking is auto-ignored by the API, so evicting whole old step-pairs is safe. Retry/
+error handling is the shared ``core.clientutil`` policy: such a validation 400 fails
+fast.</pre><div class='cls'><h2>class <code>AnthropicPolicy</code></h2><pre>Owns the Claude-on-Bedrock chat: append-only `messages`, verbatim thinking+
+tool_use refeed, the thinking-vs-forced-tool mode, exact accounting, the
+tool-free debrief, and the step-pair truncation surface.</pre><h4><code>__init__</code></h4><div class='sig'>__init__(self, *, api_key: &#x27;str&#x27;, model: &#x27;str&#x27;, aws_region: &#x27;str&#x27;, thinking_level: &#x27;str | None&#x27;, max_tokens: &#x27;int&#x27;, timeout: &#x27;int&#x27;, max_retries: &#x27;int&#x27;, pricing: &#x27;dict | None&#x27; = None, include_thoughts: &#x27;bool&#x27; = True, client=None)</div><pre>Initialize self.  See help(type(self)) for accurate signature.</pre><h4><code>start</code></h4><div class='sig'>start(self, description: &#x27;str&#x27;, state_slice: &#x27;dict&#x27;) -&gt; &#x27;None&#x27;</div><p class="muted">(no docstring)</p><h4><code>observe</code></h4><div class='sig'>observe(self, result: &#x27;dict&#x27;) -&gt; &#x27;None&#x27;</div><p class="muted">(no docstring)</p><h4><code>add_nudge</code></h4><div class='sig'>add_nudge(self, text: &#x27;str&#x27;) -&gt; &#x27;None&#x27;</div><p class="muted">(no docstring)</p><h4><code>_append_user_text</code></h4><div class='sig'>_append_user_text(self, text: &#x27;str&#x27;) -&gt; &#x27;None&#x27;</div><pre>Append user text, MERGING into a trailing user message (e.g. a tool_result
+turn) so we never emit two consecutive user messages.</pre><h4><code>_thinking_param</code></h4><div class='sig'>_thinking_param(self) -&gt; &#x27;dict&#x27;</div><pre>The `thinking` param for the thinking-ON regimes. Adaptive models take a display
+knob; manual (pre-effort) models take the token budget resolved at construction
+(shared level table, 1024 &lt;= budget &lt; max_tokens — feasibility already checked).</pre><h4><code>_cache_messages</code></h4><div class='sig'>_cache_messages(self) -&gt; &#x27;list&#x27;</div><pre>`self.messages` with a cache_control breakpoint on the LAST block of the LAST message,
+so the append-only prefix is cached for the next turn (read ~0.1x). NEVER mutates the
+stored history (the verbatim reasoning-carry blocks) — the marker rides only on the
+request copy. Skips safely if the tail isn&#x27;t a plain str/dict (e.g. SDK objects), in
+which case the static system+tools breakpoints still cache.</pre><h4><code>_turn_kwargs</code></h4><div class='sig'>_turn_kwargs(self) -&gt; &#x27;dict&#x27;</div><p class="muted">(no docstring)</p><h4><code>_debrief_kwargs</code></h4><div class='sig'>_debrief_kwargs(self) -&gt; &#x27;dict&#x27;</div><p class="muted">(no docstring)</p><h4><code>_create</code></h4><div class='sig'>_create(self, build_kwargs, max_retries: &#x27;int&#x27;, timeout: &#x27;int | None&#x27; = None)</div><p class="muted">(no docstring)</p><h4><code>_extract</code> <span class='static'>staticmethod</span></h4><div class='sig'>_extract(resp) -&gt; &#x27;tuple[str | None, str | None, str, bool, str | None]&#x27;</div><pre>Return (action, tool_use_id, reasoning_summary, has_signature, stop_reason).</pre><h4><code>_account</code></h4><div class='sig'>_account(self, usage, *, has_thinking: &#x27;bool&#x27; = False) -&gt; &#x27;tuple[dict, float | None]&#x27;</div><p class="muted">(no docstring)</p><h4><code>generate_move</code></h4><div class='sig'>generate_move(self) -&gt; &#x27;Move&#x27;</div><p class="muted">(no docstring)</p><h4><code>debrief</code></h4><div class='sig'>debrief(self) -&gt; &#x27;str | None&#x27;</div><p class="muted">(no docstring)</p><h4><code>_assistant_indices</code></h4><div class='sig'>_assistant_indices(self) -&gt; &#x27;list[int]&#x27;</div><p class="muted">(no docstring)</p><h4><code>turns</code></h4><div class='sig'>turns(self)</div><pre>Step-pair units over `messages`, oldest -&gt; newest. The head (the pinned
+user task before the first assistant) is NOT a unit. A unit = an assistant
+message + the tool_result/user message(s) up to the next assistant. The last
+unit is ACTIVE (its thinking blocks must stay intact -&gt; never evicted).</pre><h4><code>evict_oldest_turn</code></h4><div class='sig'>evict_oldest_turn(self) -&gt; &#x27;None&#x27;</div><pre>Drop the oldest completed step-pair: from the first assistant message up to
+(not incl.) the second. Pinned head + active (latest) unit are never touched.
+No-op when only head + active remain. (Prior-turn thinking is auto-ignored by
+the API, so dropping whole old pairs needs no continuity bookkeeping.)</pre></div></div></body></html>

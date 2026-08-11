@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>clients.openai_client</title><style>
+:root{--fg:#1b1f24;--muted:#5a6675;--bg:#fff;--code:#f4f6f8;--accent:#2456b8;--border:#e3e8ee}
+*{box-sizing:border-box}body{font:15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:var(--fg);
+background:var(--bg);margin:0}.wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:26px;margin:.2em 0}h2{font-size:21px;margin-top:1.6em;border-bottom:1px solid var(--border);padding-bottom:4px}
+h3{font-size:17px;margin-top:1.5em}h4{font-size:15px;margin:1.1em 0 .2em}a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px/1.5 ui-monospace,Menlo,monospace}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap}
+.sig{background:var(--code);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 6px 6px 0;margin:.4em 0;
+font:13px/1.5 ui-monospace,Menlo,monospace;overflow-x:auto}.muted{color:var(--muted)}.static{color:var(--muted);font-size:12px}
+.cls{border:1px solid var(--border);border-radius:10px;padding:4px 18px 14px;margin:1.2em 0;background:#fcfdfe}
+nav{margin:1em 0 2em}nav a{display:inline-block;margin:0 10px 6px 0}.top{font-size:13px}
+</style></head><body><div class='wrap'><p class="top"><a href="index.html">&larr; all modules</a></p><h1><code>clients.openai_client</code></h1><pre>OpenAI client — OpenAIPolicy, implements core.types.Policy.
+
+Talks to OpenAI reasoning models (gpt-5.5 / o-series) via the official ``openai`` SDK&#x27;s
+**Responses API** (``client.responses.create``) — NOT Chat Completions (a different
+surface from the SGLang OpenAI-compatible Chat Completions client).
+Closed-reasoning-model sibling of the Anthropic client: append-only ``input`` (a list of
+typed Responses items), the model&#x27;s ``response.output`` appended VERBATIM each turn (so the
+reasoning item&#x27;s ``encrypted_content`` rides forward), exact token/USD accounting, a
+tool-free debrief, and the step-pair truncation surface.
+
+Reasoning carry uses **stateless** mode — ``store=False`` +
+``include=[&quot;reasoning.encrypted_content&quot;]`` returns an encrypted reasoning item; pass the
+whole ``response.output`` (reasoning item + function_call) back UNCHANGED, then a
+``function_call_output`` item. The reasoning item must accompany its function_call (the API
+400s / degrades otherwise) → self-checking like Gemini/Anthropic; such a 400 fails fast under
+the shared ``core.clientutil`` policy. Unlike Anthropic, OpenAI reasoning models keep reasoning
+WITH forced tool calls, so the move channel is **forced make_move** (parity with Gemini/SGLang).
+``encrypted_content`` is a dedicated field separate from the visible ``summary`` — the cleanest
+carry of the four. Seed: the Responses API has no seed parameter (warned no-op, like Anthropic).</pre><div class='cls'><h2>class <code>OpenAIPolicy</code></h2><pre>Owns the Responses-API loop: append-only `input` items, verbatim reasoning+
+function_call refeed, forced make_move, exact accounting, the tool-free debrief,
+and the step-pair truncation surface.</pre><h4><code>__init__</code></h4><div class='sig'>__init__(self, *, api_key: &#x27;str&#x27;, model: &#x27;str&#x27;, effort: &#x27;str&#x27;, max_tokens: &#x27;int&#x27;, timeout: &#x27;int&#x27;, max_retries: &#x27;int&#x27;, pricing: &#x27;dict | None&#x27; = None, include_thoughts: &#x27;bool&#x27; = True, base_url: &#x27;str | None&#x27; = None, client=None)</div><pre>Initialize self.  See help(type(self)) for accurate signature.</pre><h4><code>start</code></h4><div class='sig'>start(self, description: &#x27;str&#x27;, state_slice: &#x27;dict&#x27;) -&gt; &#x27;None&#x27;</div><p class="muted">(no docstring)</p><h4><code>observe</code></h4><div class='sig'>observe(self, result: &#x27;dict&#x27;) -&gt; &#x27;None&#x27;</div><p class="muted">(no docstring)</p><h4><code>add_nudge</code></h4><div class='sig'>add_nudge(self, text: &#x27;str&#x27;) -&gt; &#x27;None&#x27;</div><p class="muted">(no docstring)</p><h4><code>_reasoning_param</code></h4><div class='sig'>_reasoning_param(self) -&gt; &#x27;dict&#x27;</div><p class="muted">(no docstring)</p><h4><code>_turn_kwargs</code></h4><div class='sig'>_turn_kwargs(self) -&gt; &#x27;dict&#x27;</div><p class="muted">(no docstring)</p><h4><code>_debrief_kwargs</code></h4><div class='sig'>_debrief_kwargs(self) -&gt; &#x27;dict&#x27;</div><p class="muted">(no docstring)</p><h4><code>_create</code></h4><div class='sig'>_create(self, build_kwargs, max_retries: &#x27;int&#x27;, timeout: &#x27;int | None&#x27; = None)</div><p class="muted">(no docstring)</p><h4><code>_extract</code> <span class='static'>staticmethod</span></h4><div class='sig'>_extract(resp) -&gt; &#x27;tuple[str | None, str | None, str, bool, str | None]&#x27;</div><pre>Return (action, call_id, reasoning_summary, has_encrypted_reasoning, status).</pre><h4><code>_account</code></h4><div class='sig'>_account(self, usage) -&gt; &#x27;tuple[dict, float | None]&#x27;</div><p class="muted">(no docstring)</p><h4><code>generate_move</code></h4><div class='sig'>generate_move(self) -&gt; &#x27;Move&#x27;</div><p class="muted">(no docstring)</p><h4><code>debrief</code></h4><div class='sig'>debrief(self) -&gt; &#x27;str | None&#x27;</div><p class="muted">(no docstring)</p><h4><code>_is_model_item</code> <span class='static'>staticmethod</span></h4><div class='sig'>_is_model_item(item) -&gt; &#x27;bool&#x27;</div><pre>A model-generated output item (reasoning / function_call / assistant message) —
+as opposed to a head/user message or a function_call_output (the result we add).</pre><h4><code>_turn_start_indices</code></h4><div class='sig'>_turn_start_indices(self) -&gt; &#x27;list[int]&#x27;</div><pre>Indices where a model turn begins — a model-output item whose predecessor is not
+one (i.e. it follows the head, a function_call_output, or a user message).</pre><h4><code>turns</code></h4><div class='sig'>turns(self)</div><pre>Step-pair units over `input`, oldest -&gt; newest. The head (the pinned user task
+before the first model item) is NOT a unit. A unit = a model turn&#x27;s items
+(reasoning + function_call) + the function_call_output that follows. The last unit
+is ACTIVE (its reasoning+call must stay paired/intact -&gt; never evicted).</pre><h4><code>evict_oldest_turn</code></h4><div class='sig'>evict_oldest_turn(self) -&gt; &#x27;None&#x27;</div><pre>Drop the oldest completed unit (its reasoning + function_call + function_call_output
+together). Pinned head + active (latest) unit are never touched. No-op when only head +
+active remain. (The API harmlessly discards reasoning items that aren&#x27;t relevant.)</pre></div></div></body></html>

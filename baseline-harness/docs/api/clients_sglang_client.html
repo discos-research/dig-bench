@@ -1,0 +1,59 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>clients.sglang_client</title><style>
+:root{--fg:#1b1f24;--muted:#5a6675;--bg:#fff;--code:#f4f6f8;--accent:#2456b8;--border:#e3e8ee}
+*{box-sizing:border-box}body{font:15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:var(--fg);
+background:var(--bg);margin:0}.wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:26px;margin:.2em 0}h2{font-size:21px;margin-top:1.6em;border-bottom:1px solid var(--border);padding-bottom:4px}
+h3{font-size:17px;margin-top:1.5em}h4{font-size:15px;margin:1.1em 0 .2em}a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px/1.5 ui-monospace,Menlo,monospace}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap}
+.sig{background:var(--code);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 6px 6px 0;margin:.4em 0;
+font:13px/1.5 ui-monospace,Menlo,monospace;overflow-x:auto}.muted{color:var(--muted)}.static{color:var(--muted);font-size:12px}
+.cls{border:1px solid var(--border);border-radius:10px;padding:4px 18px 14px;margin:1.2em 0;background:#fcfdfe}
+nav{margin:1em 0 2em}nav a{display:inline-block;margin:0 10px 6px 0}.top{font-size:13px}
+</style></head><body><div class='wrap'><p class="top"><a href="index.html">&larr; all modules</a></p><h1><code>clients.sglang_client</code></h1><pre>SGLang client — SglangPolicy, implements core.types.Policy.
+
+Talks to an SGLang OpenAI-compatible Chat Completions endpoint (open models served
+on a server).
+Append-only `messages`,
+the forced/named make_move tool call (`--move-channel`; `guided-json` is selectable for builds
+whose grammar backend rejects forced tool decoding — a forced-tool grammar 400 fails loud with
+that remedy rather than switching channel mid-run), the
+`reasoning`-field round-trip (the open-model analog of Gemini thought signatures),
+4xx fail-fast + dump. Transport is stdlib HTTP with SSE streaming, so the socket read
+timeout acts as a per-chunk IDLE timeout (`--stream-idle-timeout`): a silent/wedged server
+is caught and retried, while a slow-but-progressing generation runs to completion. The
+streamed deltas are reassembled into the same response shape a non-streamed call returns.
+
+Parser-agnostic: the `--tool-call-parser` / `--reasoning-parser` are SGLang
+server-launch flags (the operator&#x27;s job), NOT this client&#x27;s. We only use stable
+framework features: `tool_choice` named fn, `response_format` json_schema,
+`reasoning_content`, SSE streaming (`stream` + `stream_options.include_usage`),
+`/v1/models`-&gt;`max_model_len`.
+
+Behind the Policy truncation surface:
+- `model_max_context` from the server (`/v1/models` `max_model_len`) -&gt; feeds the
+  shared truncation budget; no per-model table (unlike closed models).
+- step-pair truncation surface over `messages` (head = system+task pinned, unit =
+  assistant + its result, latest = active) — core/history.py reused unchanged.
+- a `/chat/completions` reasoning round-trip probe: detect a template that silently
+  strips carried reasoning so `has_continuity` is reported HONESTLY (not a no-op claim).</pre><h2>Functions</h2><h4><code>resolve_model_and_window</code></h4><div class='sig'>resolve_model_and_window(data: &#x27;dict&#x27;, model: &#x27;str | None&#x27;, *, select=None) -&gt; &#x27;tuple[str, int | None]&#x27;</div><pre>From a GET /v1/models response pick (model_id, max_model_len). If `model` is given,
+match it; with exactly one served model auto-select it; with several, call `select(ids)`
+to choose (or raise if no selector is provided).</pre><div class='cls'><h2>class <code>ChatError</code></h2><pre>Unspecified run-time error.</pre><h4><code>__init__</code></h4><div class='sig'>__init__(self, code: &#x27;int | None&#x27;, body: &#x27;str&#x27;)</div><pre>Initialize self.  See help(type(self)) for accurate signature.</pre></div><div class='cls'><h2>class <code>SglangPolicy</code></h2><pre>Owns the OpenAI-compatible chat: append-only `messages`, the move channel
+(forced-tool by default; guided-json/auto-tool selectable per run), the reasoning round-trip,
+exact token accounting (no USD), and the step-pair truncation surface.</pre><h4><code>__init__</code></h4><div class='sig'>__init__(self, *, base_url: &#x27;str&#x27;, api_key: &#x27;str&#x27;, model: &#x27;str | None&#x27;, timeout: &#x27;int&#x27; = 60, stream_idle_timeout: &#x27;int&#x27; = 180, max_retries: &#x27;int&#x27;, max_tokens: &#x27;int&#x27; = 32000, move_channel: &#x27;str&#x27; = &#x27;forced-tool&#x27;, preserve_reasoning: &#x27;bool&#x27; = True, seed: &#x27;int | None&#x27; = None, debug_dir: &#x27;str&#x27; = &#x27;.&#x27;, select_model: &#x27;Callable | None&#x27; = None, http_post: &#x27;Callable&#x27; = &lt;function _post_json&gt;, http_get: &#x27;Callable&#x27; = &lt;function _get_json&gt;)</div><pre>Initialize self.  See help(type(self)) for accurate signature.</pre><h4><code>start</code></h4><div class='sig'>start(self, description: &#x27;str&#x27;, state_slice: &#x27;dict&#x27;) -&gt; &#x27;None&#x27;</div><p class="muted">(no docstring)</p><h4><code>observe</code></h4><div class='sig'>observe(self, result: &#x27;dict&#x27;) -&gt; &#x27;None&#x27;</div><p class="muted">(no docstring)</p><h4><code>add_nudge</code></h4><div class='sig'>add_nudge(self, text: &#x27;str&#x27;) -&gt; &#x27;None&#x27;</div><p class="muted">(no docstring)</p><h4><code>_turn_payload</code></h4><div class='sig'>_turn_payload(self) -&gt; &#x27;dict&#x27;</div><p class="muted">(no docstring)</p><h4><code>_debrief_payload</code></h4><div class='sig'>_debrief_payload(self) -&gt; &#x27;dict&#x27;</div><p class="muted">(no docstring)</p><h4><code>_generate</code></h4><div class='sig'>_generate(self, build_payload, *, max_retries=None, timeout=None) -&gt; &#x27;dict | None&#x27;</div><p class="muted">(no docstring)</p><h4><code>_record_error</code></h4><div class='sig'>_record_error(self, exc, attempt, retries, *, fatal: &#x27;bool&#x27; = False, dump: &#x27;str | None&#x27; = None) -&gt; &#x27;None&#x27;</div><p class="muted">(no docstring)</p><h4><code>_message</code> <span class='static'>staticmethod</span></h4><div class='sig'>_message(data: &#x27;dict&#x27;) -&gt; &#x27;dict&#x27;</div><p class="muted">(no docstring)</p><h4><code>_extract_action</code> <span class='static'>staticmethod</span></h4><div class='sig'>_extract_action(msg: &#x27;dict&#x27;) -&gt; &#x27;tuple[str | None, str | None]&#x27;</div><pre>Action + tool_call_id. Prefer the make_move tool call; else parse an
+{&quot;action&quot;: ...} JSON object from message content (guided-JSON path).</pre><h4><code>_account</code></h4><div class='sig'>_account(self, usage: &#x27;dict&#x27;, has_reasoning: &#x27;bool&#x27; = False) -&gt; &#x27;tuple[dict, None]&#x27;</div><p class="muted">(no docstring)</p><h4><code>generate_move</code></h4><div class='sig'>generate_move(self) -&gt; &#x27;Move&#x27;</div><p class="muted">(no docstring)</p><h4><code>debrief</code></h4><div class='sig'>debrief(self) -&gt; &#x27;str | None&#x27;</div><p class="muted">(no docstring)</p><h4><code>probe_reasoning_roundtrip</code></h4><div class='sig'>probe_reasoning_roundtrip(self) -&gt; &#x27;None&#x27;</div><pre>Does the server actually feed carried reasoning back into the prompt?
+
+Send two minimal /chat/completions requests that differ ONLY by a fat
+reasoning block (carried under both `reasoning_content` and `reasoning`, since
+builds vary in which key they inject) on a prior assistant message, and compare the
+server&#x27;s reported `prompt_tokens`. If the one carrying reasoning isn&#x27;t
+bigger, the server strips it on input =&gt; carry is a silent no-op =&gt;
+`has_continuity` is reported False. Uses /chat/completions (the endpoint we
+know works), not a guessed /tokenize. Best-effort: on error -&gt; unverified.
+
+This IS the 2-turn round-trip check, run once at startup.</pre><h4><code>_assistant_indices</code></h4><div class='sig'>_assistant_indices(self) -&gt; &#x27;list[int]&#x27;</div><p class="muted">(no docstring)</p><h4><code>turns</code></h4><div class='sig'>turns(self)</div><pre>Step-pair units over `messages`, oldest -&gt; newest. Head (everything before
+the first assistant: the system is separate + the pinned user task) is NOT a
+unit. A unit = an assistant message + the tool/user result(s) up to the next
+assistant. The last unit is ACTIVE.</pre><h4><code>evict_oldest_turn</code></h4><div class='sig'>evict_oldest_turn(self) -&gt; &#x27;None&#x27;</div><pre>Drop the oldest completed step-pair: from the first assistant message up to
+(not incl.) the second. The pinned head (before the first assistant) and the
+active (latest) unit are never touched. No-op when only head + active remain.</pre></div></div></body></html>

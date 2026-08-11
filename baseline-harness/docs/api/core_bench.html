@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>core.bench</title><style>
+:root{--fg:#1b1f24;--muted:#5a6675;--bg:#fff;--code:#f4f6f8;--accent:#2456b8;--border:#e3e8ee}
+*{box-sizing:border-box}body{font:15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:var(--fg);
+background:var(--bg);margin:0}.wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:26px;margin:.2em 0}h2{font-size:21px;margin-top:1.6em;border-bottom:1px solid var(--border);padding-bottom:4px}
+h3{font-size:17px;margin-top:1.5em}h4{font-size:15px;margin:1.1em 0 .2em}a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px/1.5 ui-monospace,Menlo,monospace}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap}
+.sig{background:var(--code);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 6px 6px 0;margin:.4em 0;
+font:13px/1.5 ui-monospace,Menlo,monospace;overflow-x:auto}.muted{color:var(--muted)}.static{color:var(--muted);font-size:12px}
+.cls{border:1px solid var(--border);border-radius:10px;padding:4px 18px 14px;margin:1.2em 0;background:#fcfdfe}
+nav{margin:1em 0 2em}nav a{display:inline-block;margin:0 10px 6px 0}.top{font-size:13px}
+</style></head><body><div class='wrap'><p class="top"><a href="index.html">&larr; all modules</a></p><h1><code>core.bench</code></h1><pre>Agent Benchmark API HTTP client (stdlib only) + the game-state slice helpers.
+
+This is the sole game
+interface and its contract (idempotent stepping off the server&#x27;s returned
+``step_index``) is identical across every provider, so it lives in the
+provider-agnostic core. Carries no game-solving intelligence.</pre><h2>Functions</h2><h4><code>state_for_model</code></h4><div class='sig'>state_for_model(state: &#x27;dict&#x27;) -&gt; &#x27;dict&#x27;</div><pre>The slice of game state handed to the model (seed text / function result).</pre><h4><code>fmt_level</code></h4><div class='sig'>fmt_level(state: &#x27;dict&#x27;) -&gt; &#x27;str&#x27;</div><p class="muted">(no docstring)</p><h4><code>levels_beaten</code></h4><div class='sig'>levels_beaten(state: &#x27;dict&#x27;) -&gt; &#x27;int | None&#x27;</div><pre>Levels cleared so far — the run&#x27;s headline performance metric, DERIVED from
+`level` (the bench carries no per-turn score): mid-game you have cleared
+`level - 1`, and a fully `completed` game has beaten every level (`max_level`).
+Returns None if `level` is absent (the bench always sends it; this is purely
+defensive).
+
+Display/analysis ONLY: recorded in the trace and shown in the operator terminal,
+but NEVER part of `state_for_model` — the model tracks progress via
+`level`/`transition` exactly as a human does (parity), and is handed no score.</pre><h4><code>terminal_banner</code></h4><div class='sig'>terminal_banner(state: &#x27;dict&#x27;) -&gt; &#x27;str&#x27;</div><p class="muted">(no docstring)</p><div class='cls'><h2>class <code>BenchError</code></h2><pre>A bench-API call failed (after retries, or a non-retryable 4xx).</pre></div><div class='cls'><h2>class <code>Bench</code></h2><pre>Thin HTTP client for the Agent Benchmark API (stdlib only).
+
+Retries transient (5xx / network) errors with backoff; 4xx are raised
+immediately. Stepping is idempotent: callers send the server&#x27;s returned
+step_index + 1, and resending an applied index returns the cached response.</pre><h4><code>__init__</code></h4><div class='sig'>__init__(self, base: &#x27;str&#x27;, token: &#x27;str&#x27;, *, timeout: &#x27;int&#x27;, max_retries: &#x27;int&#x27;)</div><pre>Initialize self.  See help(type(self)) for accurate signature.</pre><h4><code>_call</code></h4><div class='sig'>_call(self, method: &#x27;str&#x27;, path: &#x27;str&#x27;, payload: &#x27;dict | None&#x27; = None) -&gt; &#x27;dict&#x27;</div><p class="muted">(no docstring)</p><h4><code>list_games</code></h4><div class='sig'>list_games(self) -&gt; &#x27;list[str]&#x27;</div><p class="muted">(no docstring)</p><h4><code>start_session</code></h4><div class='sig'>start_session(self, game: &#x27;str&#x27;, model_name: &#x27;str&#x27;, model_version: &#x27;str&#x27;) -&gt; &#x27;dict&#x27;</div><p class="muted">(no docstring)</p><h4><code>step</code></h4><div class='sig'>step(self, sid: &#x27;str&#x27;, step_index: &#x27;int&#x27;, action: &#x27;str&#x27;) -&gt; &#x27;dict&#x27;</div><p class="muted">(no docstring)</p></div></div></body></html>

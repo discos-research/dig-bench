@@ -1,0 +1,28 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>core.provenance</title><style>
+:root{--fg:#1b1f24;--muted:#5a6675;--bg:#fff;--code:#f4f6f8;--accent:#2456b8;--border:#e3e8ee}
+*{box-sizing:border-box}body{font:15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:var(--fg);
+background:var(--bg);margin:0}.wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:26px;margin:.2em 0}h2{font-size:21px;margin-top:1.6em;border-bottom:1px solid var(--border);padding-bottom:4px}
+h3{font-size:17px;margin-top:1.5em}h4{font-size:15px;margin:1.1em 0 .2em}a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px/1.5 ui-monospace,Menlo,monospace}
+pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto;font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap}
+.sig{background:var(--code);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 6px 6px 0;margin:.4em 0;
+font:13px/1.5 ui-monospace,Menlo,monospace;overflow-x:auto}.muted{color:var(--muted)}.static{color:var(--muted);font-size:12px}
+.cls{border:1px solid var(--border);border-radius:10px;padding:4px 18px 14px;margin:1.2em 0;background:#fcfdfe}
+nav{margin:1em 0 2em}nav a{display:inline-block;margin:0 10px 6px 0}.top{font-size:13px}
+</style></head><body><div class='wrap'><p class="top"><a href="index.html">&larr; all modules</a></p><h1><code>core.provenance</code></h1><pre>Run provenance — everything a published trace needs to be reproducible.
+
+Captured ONCE per run (core/cli.py) and recorded in the session JSONL row
+(core/output.py), so each trace is self-describing: the exact code version (git
+commit + dirty flag), interpreter and SDK versions, the full resolved CLI config
+(minus secrets), the endpoint actually hit, and a hash of the prompt contract —
+a silently edited prompt cannot masquerade as the published one.
+
+Stdlib only, best-effort throughout: every field degrades to None (or is omitted)
+rather than ever failing a run.</pre><h2>Functions</h2><h4><code>prompt_contract_sha256</code></h4><div class='sig'>prompt_contract_sha256() -&gt; &#x27;str&#x27;</div><pre>sha256 over the ENTIRE ``core/prompts.py`` source. Hashing selected constants would
+miss model-facing literals inside functions (``seed_text``&#x27;s framing text,
+``creative_mode_instruction``, serialization choices), which could then change without
+changing the fingerprint — the whole module source is the prompt contract. Two runs with
+the same hash saw byte-identical task framing (the per-game description/state is the
+bench server&#x27;s, recorded separately).</pre><h4><code>collect</code></h4><div class='sig'>collect(args, policy, server: &#x27;str&#x27;) -&gt; &#x27;dict&#x27;</div><pre>The provenance dict for the session JSONL row. `args` is the RESOLVED namespace
+(after model auto-ID), `policy` the constructed provider policy.</pre></div></body></html>
