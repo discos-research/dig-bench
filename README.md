@@ -16,6 +16,19 @@ evaluation. Every game has been beaten by at least one human on their first atte
   across turns. See its [README](baseline-harness/README.md) for setup and usage, and
   [`baseline-harness/CITATION.cff`](baseline-harness/CITATION.cff) to cite it.
 
+## Citation
+
+```bibtex
+@misc{battleday2026dig,
+  title={DiG-bench: Discovery in Games},
+  author={Ruairidh M. Battleday and Kai Sandbrink and Jimi Cullen-Drohan and Zihan Yan and 
+  Timothy Muller and Clare Maguire and Ales Kubicek and Fraser Greenlee-Scott and 
+  Sukrit Sumant and Tri Dao and Jürgen Schmidhuber and Michal Valko and 
+  Joshua Tenenbaum and Thomas L. Griffiths and Zeb Kurth-Nelson and James C.R. Whittington},
+  year={2026},
+}
+```
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
